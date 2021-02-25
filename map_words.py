@@ -11,12 +11,19 @@ print('Loading model...')
 glove_model = KeyedVectors.load_word2vec_format("./models/gensim_glove_vectors.txt", binary=False)
 
 print('Opening wordlist...')
-words = open('./results/words.txt', 'r').read().split()
+df = pd.read_pickle('./results/topics.pkl')
+
+words = []
+
+for topic_group in df['topics']:
+    book_topics = []
+    for topic in topic_group:
+        words.append(topic[0])
+
 
 def words_coordinates(word_list=words, word_vectors = glove_model):
     word_plus_coordinates=[]
 
-    print('Adding vectors...')
     for word in word_list:
         try:
             current_row = []
@@ -29,22 +36,29 @@ def words_coordinates(word_list=words, word_vectors = glove_model):
 
     return pd.DataFrame(word_plus_coordinates)
 
-
 def plot_3d():
-    words_coords = words_coordinates()
-    # 3D chart
-    coords = TSNE(n_components=3).fit_transform(words_coords.iloc[:, 1:50])
-    coords = pd.DataFrame(coords, columns=['x','y','z'])
-    coords['word'] = words_coords.iloc[:, 0]
+    data = pd.DataFrame(columns=['x', 'y', 'book_num', 'word'])
 
-    
-    fig = plt.figure(figsize=(35,35))
+    for i, row in df.iterrows():
+        print(row['title'])
+        word_plus_coordinates = words_coordinates(word_list=row['topic_words'])
+        coords = TSNE(n_components=2).fit_transform(word_plus_coordinates.iloc[:, 1:50])
+        coords = pd.DataFrame(coords, columns=['x','y'])
+        coords['book_num'] = int(row['number'])
+        coords['word'] = word_plus_coordinates.iloc[:,0]
+            
+        data = data.append(coords)
+
+    data = data.reset_index()
+    print(data)
+
+    fig = plt.figure(figsize=(50,50))
     ax = fig.add_subplot(111, projection='3d')
 
-    ax.scatter(coords['x'], coords['y'], coords['z'], c='r', marker='o')
+    ax.scatter(data['book_num'], data['x'], data['y'], c='b', marker='o')
 
-    for i in range(len(coords)):
-        ax.text(coords['x'][i], coords['y'][i], coords['z'][i], coords['word'][i])
+    for i in range(len(data)):
+        ax.text(data['book_num'][i], data['x'][i], data['y'][i], data['word'][i])
     
     plt.savefig('./results/book-topics-scatter-3d.png')
 
@@ -69,12 +83,12 @@ def plot_2d():
     plt.figure(figsize = (55,55))
     
     #p1 = sns.scatterplot(data=coords, x=x, y=y)
-    [plt.scatter(coords[x][i], coords[y][i], s=coords['count'][i]*10, c='c') for i in range(len(coords))]
+    [plt.scatter(coords[x][i], coords[y][i], s=pow(coords['count'][i],2.5), c='c') for i in range(len(coords))]
 
     [plt.text(coords[x][i], coords[y][i], coords[label][i]) for i in range(len(coords))]
     plt.savefig('./results/book-topics-scatter-2d.png')
 
 
-plot_2d()
+plot_3d()
 
 
