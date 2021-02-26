@@ -15,7 +15,7 @@ from gensim import corpora, models
 lemmatizer = WordNetLemmatizer()
 lda = models.ldamodel.LdaModel
 
-manual = ["could", "would", '"','“', '”', "’", "iii",'———', '--', 'mr.', '–', 'said', 'one', '‘', 'p.', 'pp', '...', '....', 'little', 'much', 'new', 'good', 'old', 'like', 'many', 'big', 'way', 'next', 'last', 'org', 'http', 'mrs.',' le', 'say', 'even', 'back', 'thing', 'got', 'get', 'two', 'may', 'say', 'want', 'know', 'see', 'al.', 'n\'t', '\'ll', '\'ve', 'come', 'chapter', 'also']
+manual = ["could", "would", '"','“', '”', "’", "iii",'———', '--', 'mr.', '–', 'said', 'one', '‘', 'p.', 'pp', '...', '....', 'little', 'much', 'new', 'good', 'old', 'like', 'many', 'big', 'way', 'next', 'last', 'org', 'http', 'mrs.',' le', 'say', 'even', 'back', 'thing', 'got', 'get', 'two', 'may', 'say', 'want', 'know', 'see', 'al.', 'n\'t', '\'ll', '\'ve', '\'re', 'ltd.', 'come', 'chapter', 'also']
 
 exclude = set(stopwords.words('english') + list(string.punctuation) + manual)
 
