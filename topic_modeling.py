@@ -42,7 +42,7 @@ def text_to_lemmas(text='', pos=None):
         token_pos = tagged[0][1]
         word = lemmatizer.lemmatize(tagged[0][0])
 
-        if word not in exclude and len(word) > 2 and token_pos not in ['CC', 'CD']:
+        if word not in exclude and len(word) > 2:# and token_pos not in ['CC', 'CD']:
             if pos is None:
                 lemmas.append(word)
             elif token_pos == pos:
@@ -80,7 +80,7 @@ def topics_to_dict(topics):
             word = topic[1].strip('"')
             weight = float(topic[0])
             
-            if weight > 0.003 and weight > topics.get(word, 0):
+            if weight > 0.00 and weight > topics.get(word, 0):
                 topics[word] = weight
 
     topics = sorted(topics.items(), key=lambda x: x[1], reverse=True)
