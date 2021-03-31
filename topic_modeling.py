@@ -6,7 +6,7 @@ import pickle
 import numpy as np
 import pandas as pd
 
-from nltk import word_tokenize, pos_tag
+from nltk import word_tokenize, pos_tag, sent_tokenize
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import words, stopwords
 
@@ -19,43 +19,52 @@ manual = ["could", "would", '"','“', '”', "’", "iii",'———', '--', 'm
 
 exclude = set(stopwords.words('english') + list(string.punctuation) + manual)
 
-directory = './data'
-num_topics = 10
-passes = 7
-count = 0
+directory = './data/'
+num_topics = 7
+passes = 20
+alpha = 'auto'
 max_books = 100
 
 books = []
 
 def file_to_text(path):
     f = codecs.open(path, 'r', errors='replace')
-    text = f.read().lower()
+    text = f.read()#.lower()
     f.close()
     return text
 
-def text_to_lemmas(text='', pos=None):
-    tokens = word_tokenize(text)
+def text_to_lemmas(text=''):
+    sentences = sent_tokenize(text)
+    tokens = []
+    for sentence in sentences:
+        sent_tokens = pos_tag(word_tokenize(sentence))
+        tokens = tokens + sent_tokens
+
     lemmas = []
     
     for token in tokens:
-        tagged = pos_tag([token])
-        token_pos = tagged[0][1]
-        word = lemmatizer.lemmatize(tagged[0][0])
+        token_pos = token[1]
+        word = lemmatizer.lemmatize(token[0].lower())
 
-        if word not in exclude and len(word) > 2:# and token_pos not in ['CC', 'CD']:
-            if pos is None:
-                lemmas.append(word)
-            elif token_pos == pos:
-                lemmas.append(word)
-
+        if word not in exclude and len(word) > 2 and token_pos in ['NN', 'JJ']:
+            lemmas.append(word)
+    
     return lemmas
 
-def build_lda_modal(lemmas, num_topics = num_topics):
+def build_lda_modal(lemmas):
     dictionary = corpora.Dictionary(lemmas)
     doc_term_matrix = [dictionary.doc2bow(doc) for doc in lemmas]
-    ldamodel = lda(doc_term_matrix, num_topics=num_topics, id2word=dictionary, passes=passes, minimum_probability=0.9)
+    ldamodel = lda(
+        corpus=doc_term_matrix,
+        #alpha=alpha,
+        num_topics=num_topics,
+        passes=passes,
+        id2word=dictionary,
+        minimum_probability=0.4,
+        per_word_topics=False
+    )
 
-    return ldamodel
+    return ldamodel, doc_term_matrix
     
 def get_topics(ldamodel, num_topics = num_topics):
     topics = ldamodel.print_topics(num_topics=num_topics)
@@ -86,39 +95,53 @@ def topics_to_dict(topics):
     topics = sorted(topics.items(), key=lambda x: x[1], reverse=True)
     return topics
 
-files = os.listdir(directory)
-files.sort()
 
-book_topics = []
+def text_files_to_wordbags():
+    count = 0
+    files = os.listdir(directory)
+    files.sort()
 
-for filename in files:
-    if count < max_books:
-        if '.txt' in filename:
-            count += 1
-            print('\n')
-            print('\n' + filename)
-            print('\n')
-             
-            text = file_to_text(directory + '/' + filename)
-            lemmas = text_to_lemmas(text)
-            lemmas = np.array_split(lemmas, 15)
+    words = []
+    titles = []
 
-            ldamodel = build_lda_modal(lemmas)
-            topic_groups = get_topics(ldamodel)
+    for filename in files:
+        if count < max_books:
+            if '.txt' in filename:
+                count += 1
+                book_no = filename.split(' -- ')[0]
+                book_title = filename.split(' -- ')[1].strip('.txt')
+                titles.append(book_title)
+                print('\n' + book_title)
+                 
+                text = file_to_text(directory + '/' + filename)
+                lemmas = text_to_lemmas(text)
+                words.append(lemmas)
+    return words, titles
 
-            topics = topics_to_dict(topic_groups)
-            print(topics)
-            topic_words = [topic[0] for topic in topics]
-
-            book_no = filename.split(' -- ')[0]
-            book_title = filename.split(' -- ')[1].strip('.txt')
-
-            book_topics.append([book_no, book_title, topics, topic_words])
+# generate word bags and titles
+#words, titles = text_files_to_wordbags()
+#words_df = pd.DataFrame(words).to_pickle('./results/books_words.pkl')
+#titles_df = pd.DataFrame(titles).to_pickle('./results/book_titles.pkl')
 
 
-print()
 
-df = pd.DataFrame(np.array(book_topics, dtype="object"), columns=['number', 'title', 'topics', 'topic_words'])
-df.to_pickle('./results/topics.pkl')
+# read generated word bags and titles
+titles = pd.read_pickle('./results/book_titles.pkl').values.tolist()
+words = pd.read_pickle('./results/books_words.pkl').values.tolist()
+words = [list(filter(None, doc)) for doc in words]
 
-print(df)
+
+# generate topics
+ldamodel, corpus = build_lda_modal(words)
+topic_groups = get_topics(ldamodel)
+transformed_corpus = ldamodel[corpus]
+
+print(alpha, passes)
+
+for topic in topic_groups:
+    print(topic)
+
+for topic in transformed_corpus:
+    print(topic)
+
+
